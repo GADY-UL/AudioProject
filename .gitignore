@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+data/AudioMNIST/**/*.wav
+data/AudioMNIST/**/*.wav
