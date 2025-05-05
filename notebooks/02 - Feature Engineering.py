@@ -183,7 +183,7 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(mo):
-    mo.md(r"""## Mel-Spectrogram""")
+    mo.md(r"""# Mel-Spectrogram""")
     return
 
 
@@ -208,6 +208,12 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""## Comparison of Mel-Spectrograms - before and after denoising""")
+    return
+
+
+@app.cell(hide_code=True)
 def _(slider_fmax, slider_hop_length, slider_mels, slider_n_fft):
     n_mels = slider_mels.value    # number of mel bands (frequency bins) to use in mel-spectrogram. In short, this is done to divide frequency range into bands that better match human auditory perception.
     fmax = slider_fmax.value    # Frequency cutoff. For speech, most important information is below 8000 Hz, thus 10kHz is reasonable.
@@ -216,13 +222,7 @@ def _(slider_fmax, slider_hop_length, slider_mels, slider_n_fft):
     return fmax, hop_length, n_fft, n_mels
 
 
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""## Comparison of Mel-Spectrograms - before and after denoising""")
-    return
-
-
-@app.cell(hide_code=True)
+@app.cell
 def _(
     dn_audio_data,
     fmax,
@@ -231,13 +231,13 @@ def _(
     n_fft,
     n_mels,
     np,
-    plt,
     pre_audio_data,
     sr_dn,
     sr_p,
     warnings,
 ):
     ### Before vs After ###
+
     warnings.filterwarnings("ignore", category=UserWarning, module="librosa")
 
     ## Before ##
@@ -263,7 +263,11 @@ def _(
     )
 
     ms_db_dn = librosa.power_to_db(melspec_dn, ref=np.max)
+    return ms_db_dn, ms_db_pre
 
+
+@app.cell(hide_code=True)
+def _(fmax, librosa, ms_db_dn, ms_db_pre, plt, sr_dn, sr_p):
     ## Plot it
     plt.figure(figsize=(14, 5))
     # Before #
@@ -275,7 +279,7 @@ def _(
         y_axis="mel",
         fmax=fmax
     )
-    plt.colorbar()
+    plt.colorbar(format='%+2.0f dB')
     plt.title("Before")
     # After #
     plt.subplot(1, 2, 2)
@@ -286,10 +290,11 @@ def _(
         y_axis="mel",
         fmax=fmax
     )
-    plt.colorbar()
+    plt.colorbar(format='%+2.0f dB')
     plt.title("After")
 
     plt.tight_layout()
+
     plt.show()
     return
 
@@ -310,7 +315,7 @@ def _(dn_db, librosa, plt, pre_db):
         x_axis='time',
         y_axis='hz',
     )
-    plt.colorbar()
+    plt.colorbar(format='%+2.0f dB')
     plt.title("Before")
 
     plt.subplot(1, 2, 2)
@@ -319,12 +324,189 @@ def _(dn_db, librosa, plt, pre_db):
         x_axis='time',
         y_axis='hz',
     )
-    plt.colorbar()
+    plt.colorbar(format='%+2.0f dB')
     plt.title("After")
 
 
     plt.tight_layout()
     plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""# MFCCs""")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    slider_nmfccs = mo.ui.slider(start=0, stop=24, step=1,
+                               value=13, label="n_mfccs (13)")
+
+    slider_nmfccs
+    return (slider_nmfccs,)
+
+
+@app.cell
+def _(slider_nmfccs):
+    n_mfcc=slider_nmfccs.value
+    return (n_mfcc,)
+
+
+@app.cell
+def _():
+    # n_mels = slider_mels.value  
+    # fmax = slider_fmax.value    
+    # n_fft = slider_n_fft.value 
+    # hop_length = slider_hop_length.value
+    return
+
+
+@app.cell(hide_code=True)
+def _(dn_audio_data, hop_length, librosa, n_fft, n_mfcc, pre_audio_data, sr_p):
+    mfccs_pre = librosa.feature.mfcc(
+        y = pre_audio_data,
+        sr = sr_p,
+        n_mfcc=n_mfcc,
+        n_fft=n_fft,
+        hop_length=hop_length
+    )
+
+    mfccs_dn = librosa.feature.mfcc(
+        y = dn_audio_data,
+        sr = sr_p,
+        n_mfcc=n_mfcc,
+        n_fft=n_fft,
+        hop_length=hop_length
+    )
+    return mfccs_dn, mfccs_pre
+
+
+@app.cell(hide_code=True)
+def _(mfccs_dn, mfccs_pre, plt):
+    plt.figure(figsize=(14, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(mfccs_pre,aspect='auto', origin='lower', cmap='RdBu_r')
+    plt.grid(True, linestyle='--', color='black', alpha=0.3)
+    plt.title('MFCC - Before denoising')
+    plt.xlabel('Time (frame)')
+    plt.ylabel('MFCCs')
+    plt.colorbar()
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(mfccs_dn,aspect='auto', origin='lower', cmap='RdBu_r')
+    plt.grid(True, linestyle='--', color='black', alpha=0.3)
+    plt.title('MFCC - After denoising')
+    plt.xlabel('Time (frame)')
+    plt.ylabel('MFCCs')
+    plt.colorbar()
+
+    plt.show()
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(
+        r"""
+    # Δ & Δ² features
+    #### https://librosa.org/doc/main/generated/librosa.feature.delta.html
+    """
+    )
+    return
+
+
+@app.cell
+def _(librosa, mfccs_dn, mfccs_pre):
+    delta_pre = librosa.feature.delta(mfccs_pre)
+    delta2_pre = librosa.feature.delta(mfccs_pre, order=2)
+
+    delta_dn = librosa.feature.delta(mfccs_dn)
+    delta2_dn = librosa.feature.delta(mfccs_dn, order=2)
+    return delta2_dn, delta2_pre, delta_dn, delta_pre
+
+
+@app.cell(hide_code=True)
+def _(delta_dn, delta_pre, plt):
+    fig_delta, axs_delta = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Delta - Before Denoising
+    im_delta_pre = axs_delta[0].imshow(delta_pre, aspect='auto', origin='lower', cmap='RdBu_r')
+    axs_delta[0].grid(True, linestyle='--', color='black', alpha=0.3)
+    axs_delta[0].set_title('Delta MFCC - Before Denoising')
+    axs_delta[0].set_xlabel('Time (frame)')
+    axs_delta[0].set_ylabel('MFCC Index')
+    fig_delta.colorbar(im_delta_pre, ax=axs_delta[0])
+
+    # Delta - After Denoising
+    im_delta_dn = axs_delta[1].imshow(delta_dn, aspect='auto', origin='lower', cmap='RdBu_r')
+    axs_delta[1].grid(True, linestyle='--', color='black', alpha=0.3)
+    axs_delta[1].set_title('Delta MFCC - After Denoising')
+    axs_delta[1].set_xlabel('Time (frame)')
+    axs_delta[1].set_ylabel('MFCC Index')
+    fig_delta.colorbar(im_delta_dn, ax=axs_delta[1])
+
+    plt.tight_layout()
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(delta2_dn, delta2_pre, plt):
+    fig_delta2, axs_delta2 = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Delta-Delta - Before Denoising
+    im_delta2_pre = axs_delta2[0].imshow(delta2_pre, aspect='auto', origin='lower', cmap='RdBu_r')
+    axs_delta2[0].grid(True, linestyle='--', color='black', alpha=0.3)
+    axs_delta2[0].set_title('Delta-Delta MFCC - Before Denoising')
+    axs_delta2[0].set_xlabel('Time (frame)')
+    axs_delta2[0].set_ylabel('MFCC Index')
+    fig_delta2.colorbar(im_delta2_pre, ax=axs_delta2[0])
+
+    # Delta-Delta - After Denoising
+    im_delta2_dn = axs_delta2[1].imshow(delta2_dn, aspect='auto', origin='lower', cmap='RdBu_r')
+    axs_delta2[1].grid(True, linestyle='--', color='black', alpha=0.3)
+    axs_delta2[1].set_title('Delta-Delta MFCC - After Denoising')
+    axs_delta2[1].set_xlabel('Time (frame)')
+    axs_delta2[1].set_ylabel('MFCC Index')
+    fig_delta2.colorbar(im_delta2_dn, ax=axs_delta2[1])
+
+    plt.tight_layout()
+    plt.show()
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""# Spectral features: Centroid & Bandwidth""")
+    return
+
+
+@app.cell
+def _(dn_audio_data, librosa, pre_audio_data, sr_dn, sr_p):
+    # Spectral Centroid
+    spectral_centroid_pre = librosa.feature.spectral_centroid(y=pre_audio_data, sr=sr_p)[0]
+    spectral_centroid_dn = librosa.feature.spectral_centroid(y=dn_audio_data, sr=sr_dn)[0]
+
+    # Spectral Bandwidth
+    spectral_bandwidth_pre = librosa.feature.spectral_bandwidth(y=pre_audio_data, sr=sr_p)[0]
+    spectral_bandwidth_dn = librosa.feature.spectral_bandwidth(y=dn_audio_data, sr=sr_dn)[0]
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""# Zero Crossing Rate""")
+    return
+
+
+@app.cell
+def _(dn_audio_data, librosa, pre_audio_data):
+    # Zero Crossing Rate
+    zcr_pre = librosa.feature.zero_crossing_rate(pre_audio_data)[0]
+    zcr_dn = librosa.feature.zero_crossing_rate(dn_audio_data)[0]
     return
 
 
